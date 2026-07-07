@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>製造業管理儀表板</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --steel:#1a2332;--steel-mid:#243044;--steel-light:#2e3d54;
+  --accent:#e8a020;--green:#2ecc71;--red:#e74c3c;--yellow:#f39c12;
+  --blue:#5ab0e8;--purple:#c088e8;
+  --text:#e8edf2;--text-dim:#8a9bb0;--border:#2e3d54;--card:#1e2d40;
+}
+body{background:var(--steel);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5;min-height:100vh}
+header{background:var(--steel-mid);border-bottom:2px solid var(--accent);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+header .sub{font-size:11px;color:var(--text-dim);margin-top:2px}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ts{font-size:11px;color:var(--text-dim);text-align:right}
+.btn-edit-mode{padding:6px 14px;border-radius:5px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-edit-mode:hover,.btn-edit-mode.active{background:var(--accent);color:#000}
+.saved-badge{font-size:11px;color:var(--green);opacity:0;transition:opacity .4s}
+.saved-badge.show{opacity:1}
+.layer-tabs{display:flex;padding:16px 24px 0;border-bottom:1px solid var(--border);gap:2px;flex-wrap:wrap}
+.layer-tab{padding:8px 18px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;border-radius:4px 4px 0 0;border:1px solid transparent;border-bottom:none;color:var(--text-dim);background:transparent;transition:all .2s;position:relative;bottom:-1px;white-space:nowrap}
+.layer-tab:hover{color:var(--text);background:var(--steel-light)}
+.layer-tab.active{color:var(--accent);background:var(--steel);border-color:var(--border);border-bottom-color:var(--steel)}
+.layer-tab.tab-project.active{color:var(--blue)}
+.layer-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:6px;vertical-align:middle}
+.badge-lag{background:#3a2a10;color:var(--accent)}
+.badge-mix{background:#1a3a2a;color:var(--green)}
+.badge-lead{background:#3a1a1a;color:var(--red)}
+.badge-proj{background:#0a1a2e;color:var(--blue)}
+main{padding:20px 24px 40px}
+.layer-desc{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--steel-light);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;margin-bottom:16px;font-size:12px;color:var(--text-dim)}
+.layer-desc strong{color:var(--text)}
+.causal-chain{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--card);border-radius:6px;margin-bottom:20px;font-size:11px;overflow-x:auto;white-space:nowrap}
+.chain-node{padding:4px 10px;border-radius:4px;font-weight:600;font-size:10px;letter-spacing:.04em}
+.cn-finance{background:#3a2800;color:var(--accent)}
+.cn-customer{background:#1a3a28;color:#5dd99a}
+.cn-process{background:#1a2a3a;color:#5ab0e8}
+.cn-learning{background:#2a1a3a;color:#c088e8}
+.chain-arrow{color:var(--text-dim);font-size:14px}
+.chain-label{color:var(--text-dim);font-size:10px}
+.dim-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:700px){.dim-grid{grid-template-columns:1fr}}
+.dim-section{background:var(--card);border-radius:8px;overflow:hidden}
+.dim-header{padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.dim-finance .dim-header{background:#2a1e00;color:var(--accent);border-bottom:1px solid #4a3500}
+.dim-customer .dim-header{background:#001e10;color:#5dd99a;border-bottom:1px solid #004a28}
+.dim-process .dim-header{background:#001020;color:#5ab0e8;border-bottom:1px solid #003050}
+.dim-learning .dim-header{background:#150020;color:#c088e8;border-bottom:1px solid #3a0055}
+.dim-icon{font-size:16px}
+.kpi-list{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.kpi-item{display:grid;grid-template-columns:1fr 90px 36px;align-items:center;gap:8px;padding:8px 10px;background:var(--steel-mid);border-radius:6px;border-left:3px solid transparent;cursor:pointer;transition:background .15s;position:relative}
+.kpi-item:hover{background:var(--steel-light)}
+.kpi-item.status-green{border-left-color:var(--green)}
+.kpi-item.status-yellow{border-left-color:var(--yellow)}
+.kpi-item.status-red{border-left-color:var(--red)}
+.kpi-left{min-width:0}
+.kpi-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-meta{font-size:10px;color:var(--text-dim);margin-top:1px}
+.kpi-mid{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.kpi-value{font-size:15px;font-weight:700;line-height:1.2}
+.kpi-target{font-size:10px;color:var(--text-dim)}
+.kpi-right{display:flex;flex-direction:column;align-items:center;gap:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot-yellow{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.dot-red{background:var(--red);box-shadow:0 0 6px var(--red);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sparkline{display:block}
+.edit-overlay{display:none;position:absolute;inset:0;background:rgba(26,35,50,.92);border-radius:6px;align-items:center;justify-content:center;gap:6px;z-index:10;padding:6px 10px}
+.edit-mode .kpi-item:hover .edit-overlay{display:flex}
+.edit-overlay .btn-open-edit{padding:5px 12px;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:11px;font-weight:600;cursor:pointer}
+.edit-overlay .btn-open-edit:hover{background:var(--accent);color:#000}
+.legend{display:flex;gap:20px;padding:14px 0 4px;font-size:11px;color:var(--text-dim);align-items:center;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px}
+.chart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.chart-overlay.show{display:flex}
+.chart-box{background:var(--steel-mid);border:1px solid var(--border);border-radius:12px;padding:22px 24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.chart-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.chart-title{font-size:15px;font-weight:700}
+.chart-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:0 2px}
+.chart-close:hover{color:var(--text)}
+.chart-why{font-size:11px;color:var(--text-dim);margin-bottom:16px}
+.chart-meta{display:flex;gap:16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+.chart-meta-item{font-size:11px}
+.chart-meta-label{color:var(--text-dim)}
+.chart-meta-val{font-weight:600;margin-left:4px}
+canvas#chartCanvas{width:100%!important}
+.edit-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+.edit-modal-overlay.show{display:flex}
+.edit-modal{background:var(--steel-mid);border:1px solid var(--accent);border-radius:12px;padding:24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.edit-modal h2{font-size:15px;font-weight:700;color:var(--accent);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.edit-modal h2 button{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1}
+.edit-modal h2 button:hover{color:var(--text)}
+.form-section{margin-bottom:16px}
+.form-section-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+.form-row.single{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:var(--text-dim)}
+.form-group input,.form-group select,.form-group textarea{background:var(--steel);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 10px;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:60px}
+.history-inputs{display:flex;gap:4px;flex-wrap:wrap}
+.history-inputs input{width:60px;text-align:center}
+.edit-modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.btn-cancel{padding:7px 18px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer}
+.btn-cancel:hover{border-color:var(--text-dim);color:var(--text)}
+.btn-save{padding:7px 18px;border-radius:5px;border:none;background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer}
+.btn-save:hover{background:#f0b030}
+.status-preview{display:flex;gap:8px;margin-top:4px}
+.sp-item{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid transparent;opacity:.5}
+.sp-item.selected{opacity:1;border-color:currentColor}
+.sp-green{color:var(--green)}.sp-yellow{color:var(--yellow)}.sp-red{color:var(--red)}
+.data-mgmt{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn-sm{padding:5px 11px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;transition:all .2s}
+.btn-sm:hover{border-color:var(--text);color:var(--text)}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+.btn-sm.primary{border-color:var(--blue);color:var(--blue)}
+.btn-sm.primary:hover{background:var(--blue);color:#000}
+
+/* PROJECT STYLES */
+.pm-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:800px){.pm-summary{grid-template-columns:repeat(2,1fr)}}
+.pm-card{background:var(--card);border-radius:8px;padding:14px 16px;border-top:3px solid var(--border)}
+.pm-card.c-blue{border-top-color:var(--blue)}
+.pm-card.c-green{border-top-color:var(--green)}
+.pm-card.c-yellow{border-top-color:var(--yellow)}
+.pm-card.c-red{border-top-color:var(--red)}
+.pm-card-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.pm-card-value{font-size:22px;font-weight:700;line-height:1}
+.pm-card-sub{font-size:10px;color:var(--text-dim);margin-top:4px}
+.pm-section{margin-bottom:24px}
+.pm-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.pm-section-title{font-size:13px;font-weight:700;color:var(--blue);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.pm-section-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--blue);border-radius:2px}
+.project-selector{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.proj-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s}
+.proj-btn:hover{border-color:var(--blue);color:var(--blue)}
+.proj-btn.active{background:var(--blue);border-color:var(--blue);color:#000}
+.btn-add-proj{padding:6px 14px;border-radius:20px;border:1px dashed var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;transition:all .2s}
+.btn-add-proj:hover{border-color:var(--accent);color:var(--accent)}
+.pm-table{width:100%;border-collapse:collapse;font-size:12px}
+.pm-table th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border);background:var(--steel-mid)}
+.pm-table td{padding:9px 12px;border-bottom:1px solid rgba(46,61,84,.5);vertical-align:middle}
+.pm-table tr:last-child td{border-bottom:none}
+.pm-table tr:hover td{background:rgba(46,61,84,.3)}
+.pm-table .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.pm-table .over{color:var(--red)}
+.pm-table .ok{color:var(--green)}
+.pm-table .warn{color:var(--yellow)}
+.cost-bar-wrap{width:70px;height:5px;background:var(--steel-light);border-radius:3px;display:inline-block;vertical-align:middle;margin-left:6px}
+.cost-bar{height:100%;border-radius:3px}
+.cost-bar.ok{background:var(--green)}
+.cost-bar.warn{background:var(--yellow)}
+.cost-bar.over{background:var(--red)}
+.tfoot-row td{font-weight:700;border-top:2px solid var(--border);padding-top:10px;color:var(--text)}
+.milestone-list{display:flex;flex-direction:column;gap:6px}
+.milestone-row{display:grid;grid-template-columns:110px 1fr 80px 90px 90px;gap:10px;align-items:center;padding:8px 12px;background:var(--steel-mid);border-radius:6px;font-size:11px;border-left:3px solid transparent}
+.milestone-row.ms-done{border-left-color:var(--green)}
+.milestone-row.ms-active{border-left-color:var(--blue)}
+.milestone-row.ms-late{border-left-color:var(--red)}
+.milestone-row.ms-pending{border-left-color:var(--border)}
+.ms-date{color:var(--text-dim);font-size:10px}
+.ms-name{font-weight:600}
+.ms-owner{color:var(--text-dim)}
+.ms-status{text-align:center}
+.ms-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
+.ms-badge.done{background:#0a2a14;color:var(--green)}
+.ms-badge.active{background:#0a1830;color:var(--blue)}
+.ms-badge.late{background:#2a0a0a;color:var(--red)}
+.ms-badge.pending{background:var(--steel-light);color:var(--text-dim)}
+.ms-progress-wrap{height:5px;background:var(--steel-light);border-radius:3px;overflow:hidden}
+.ms-progress{height:100%;border-radius:3px}
+.contract-card{background:var(--card);border-radius:8px;overflow:hidden;margin-bottom:8px}
+.contract-header{display:grid;grid-template-columns:1fr 100px 100px 90px 80px 80px;gap:10px;padding:12px 16px;background:var(--steel-mid);align-items:center;cursor:pointer;transition:background .15s}
+.contract-header:hover{background:var(--steel-light)}
+.contract-name{font-size:12px;font-weight:700}
+.contract-client{font-size:10px;color:var(--text-dim)}
+.contract-num{font-size:12px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.contract-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-align:center}
+.cb-active{background:#0a1830;color:var(--blue)}
+.cb-done{background:#0a2a14;color:var(--green)}
+.cb-risk{background:#2a1400;color:var(--yellow)}
+.cb-dispute{background:#2a0a0a;color:var(--red)}
+.contract-body{display:none;padding:16px;border-top:1px solid var(--border)}
+.contract-body.open{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.contract-detail-group{}
+.contract-detail-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(46,61,84,.4)}
+.contract-detail-row:last-child{border-bottom:none}
+.contract-detail-label{color:var(--text-dim);font-size:11px}
+.contract-detail-val{font-weight:600;font-size:11px}
+.wbs-tree{display:flex;flex-direction:column;gap:4px}
+.wbs-item{border-radius:6px;overflow:hidden}
+.wbs-row{display:grid;gap:8px;align-items:center;padding:7px 10px;cursor:pointer;transition:background .15s}
+.wbs-row:hover{background:var(--steel-light)}
+.wbs-toggle{font-size:9px;color:var(--text-dim);transition:transform .2s;display:inline-block;width:12px;flex-shrink:0}
+.wbs-toggle.has-children{color:var(--blue)}
+.wbs-toggle.open{transform:rotate(90deg)}
+.wbs-code{font-size:10px;color:var(--text-dim);font-family:monospace}
+.wbs-name{font-size:12px;font-weight:600}
+.wbs-owner{font-size:10px;color:var(--text-dim)}
+.wbs-pct{font-size:11px;font-weight:700;text-align:right;min-width:34px}
+.wbs-progress-wrap{height:5px;background:var(--steel-light);border-radius:3px;overflow:hidden}
+.wbs-progress{height:100%;border-radius:3px}
+.wbs-children{padding-left:18px;display:none;flex-direction:column;gap:4px;border-left:1px solid var(--border);margin-left:12px}
+.wbs-children.open{display:flex}
+.wbs-l0 > .wbs-row{background:var(--steel-mid);border-left:3px solid var(--blue)}
+.wbs-l1 > .wbs-row{background:rgba(26,35,50,.5)}
+.wbs-l2 > .wbs-row{background:rgba(26,35,50,.25)}
+/* Project edit modal */
+.pm-edit-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center}
+.pm-edit-modal-overlay.show{display:flex}
+.pm-edit-modal{background:var(--steel-mid);border:1px solid var(--blue);border-radius:12px;padding:24px;width:640px;max-width:96vw;max-height:92vh;overflow-y:auto}
+.pm-edit-modal h2{font-size:15px;font-weight:700;color:var(--blue);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.pm-edit-modal h2 button{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1}
+.tab-bar{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.tab-pill{padding:6px 14px;cursor:pointer;font-size:11px;font-weight:600;border-radius:4px 4px 0 0;border:1px solid transparent;border-bottom:none;color:var(--text-dim);transition:all .2s;position:relative;bottom:-1px}
+.tab-pill.active{color:var(--blue);border-color:var(--border);border-bottom-color:var(--steel-mid)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.tbl-edit-row{display:grid;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(46,61,84,.4)}
+.tbl-edit-row.head{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);padding-bottom:6px}
+.tbl-edit-row input,.tbl-edit-row select{background:var(--steel);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:11px;font-family:inherit;outline:none;width:100%}
+.tbl-edit-row input:focus,.tbl-edit-row select:focus{border-color:var(--blue)}
+.btn-del-row{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0 2px;line-height:1}
+.btn-del-row:hover{color:var(--red)}
+.btn-add-row{margin-top:8px;padding:5px 12px;border-radius:4px;border:1px dashed var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;display:inline-block}
+.btn-add-row:hover{border-color:var(--blue);color:var(--blue)}
+.cols-cost{grid-template-columns:65px 1fr 80px 80px 1fr 28px}
+.cols-ms{grid-template-columns:100px 1fr 80px 55px 85px 28px}
+.cols-wbs{grid-template-columns:65px 1fr 80px 80px 80px 28px}
+.cols-pay{grid-template-columns:100px 1fr 80px 80px 85px 28px}
+.contract-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>製造業管理儀表板</h1>
+    <div class="sub">BSC 因果鏈 × 三層決策架構 × 專案管理 ── 資料存於本機</div>
+  </div>
+  <div class="header-right">
+    <div class="data-mgmt">
+      <button class="btn-sm" onclick="exportData()">⬇ 匯出 JSON</button>
+      <label class="btn-sm" style="cursor:pointer">⬆ 匯入 JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+      <button class="btn-sm danger" onclick="resetData()">↺ 還原預設</button>
+    </div>
+    <span class="saved-badge" id="savedBadge">✓ 已儲存</span>
+    <button class="btn-edit-mode" id="btnEditMode" onclick="toggleEditMode()">✏ 編輯模式</button>
+    <div class="ts">本月累計<br><span id="currentMonth"></span></div>
+  </div>
+</header>
+<div class="layer-tabs">
+  <div class="layer-tab active" onclick="switchLayer(0)">第一層：健康度 <span class="layer-badge badge-lag">落後指標</span></div>
+  <div class="layer-tab" onclick="switchLayer(1)">第二層：驅動力 <span class="layer-badge badge-mix">混合指標</span></div>
+  <div class="layer-tab" onclick="switchLayer(2)">第三層：預警燈 <span class="layer-badge badge-lead">領先指標</span></div>
+  <div class="layer-tab tab-project" onclick="switchLayer(3)">📋 專案管理 <span class="layer-badge badge-proj">PROJECT</span></div>
+</div>
+<main id="mainContent"></main>
+
+<!-- BSC Chart Modal -->
+<div class="chart-overlay" id="chartOverlay" onclick="closeChart()">
+  <div class="chart-box" onclick="event.stopPropagation()">
+    <div class="chart-header"><div class="chart-title" id="chartTitle"></div><button class="chart-close" onclick="closeChart()">×</button></div>
+    <div class="chart-why" id="chartWhy"></div>
+    <canvas id="chartCanvas" height="180"></canvas>
+    <div class="chart-meta">
+      <div class="chart-meta-item"><span class="chart-meta-label">檢視頻率</span><span class="chart-meta-val" id="cmFreq"></span></div>
+      <div class="chart-meta-item"><span class="chart-meta-label">負責人</span><span class="chart-meta-val" id="cmOwner"></span></div>
+      <div class="chart-meta-item"><span class="chart-meta-label">當前值</span><span class="chart-meta-val" id="cmCurrent"></span></div>
+      <div class="chart-meta-item"><span class="chart-meta-label">目標</span><span class="chart-meta-val" id="cmTarget"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- BSC Edit KPI Modal -->
+<div class="edit-modal-overlay" id="editModalOverlay" onclick="closeEditModal()">
+  <div class="edit-modal" onclick="event.stopPropagation()">
+    <h2><span id="editModalTitle">編輯指標</span><button onclick="closeEditModal()">×</button></h2>
+    <div class="form-section">
+      <div class="form-section-title">基本資訊</div>
+      <div class="form-row"><div class="form-group"><label>指標名稱</label><input id="ef-name" type="text"></div><div class="form-group"><label>副標題說明</label><input id="ef-meta" type="text"></div></div>
+      <div class="form-row single"><div class="form-group"><label>指標說明</label><textarea id="ef-why"></textarea></div></div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">數值設定</div>
+      <div class="form-row"><div class="form-group"><label>當前值（顯示用）</label><input id="ef-display" type="text"></div><div class="form-group"><label>目標說明</label><input id="ef-target" type="text"></div></div>
+      <div class="form-row"><div class="form-group"><label>單位</label><input id="ef-unit" type="text"></div><div class="form-group"><label>目標線數值</label><input id="ef-targetVal" type="number"></div></div>
+      <div class="form-row">
+        <div class="form-group"><label>圖表類型</label><select id="ef-chartType"><option value="line">折線圖</option><option value="bar">長條圖</option></select></div>
+        <div class="form-group"><label>狀態燈號</label><div class="status-preview"><span class="sp-item sp-green" id="sp-green" onclick="selectStatus('green')">● 達標</span><span class="sp-item sp-yellow" id="sp-yellow" onclick="selectStatus('yellow')">● 注意</span><span class="sp-item sp-red" id="sp-red" onclick="selectStatus('red')">● 異常</span></div></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">近6個月歷史資料（由舊→新）</div>
+      <div class="history-inputs" id="historyInputs"></div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">負責人資訊</div>
+      <div class="form-row"><div class="form-group"><label>負責人</label><input id="ef-owner" type="text"></div><div class="form-group"><label>檢視頻率</label><input id="ef-freq" type="text"></div></div>
+    </div>
+    <div class="edit-modal-footer"><button class="btn-cancel" onclick="closeEditModal()">取消</button><button class="btn-save" onclick="saveKPI()">儲存</button></div>
+  </div>
+</div>
+
+<!-- Project Edit Modal -->
+<div class="pm-edit-modal-overlay" id="pmEditOverlay" onclick="closePmModal()">
+  <div class="pm-edit-modal" onclick="event.stopPropagation()">
+    <h2><span id="pmModalTitle">編輯專案</span><button onclick="closePmModal()">×</button></h2>
+    <div class="tab-bar">
+      <div class="tab-pill active" id="ptab0" onclick="switchPmTab(0)">基本資訊</div>
+      <div class="tab-pill" id="ptab1" onclick="switchPmTab(1)">成本預算</div>
+      <div class="tab-pill" id="ptab2" onclick="switchPmTab(2)">時程 Milestone</div>
+      <div class="tab-pill" id="ptab3" onclick="switchPmTab(3)">WBS 工作分解</div>
+      <div class="tab-pill" id="ptab4" onclick="switchPmTab(4)">合約資訊</div>
+    </div>
+    <div class="tab-pane active" id="pm-tab-0">
+      <div class="form-section">
+        <div class="form-row"><div class="form-group"><label>專案名稱</label><input id="pm-name" type="text"></div><div class="form-group"><label>專案代號</label><input id="pm-code" type="text" placeholder="PRJ-001"></div></div>
+        <div class="form-row"><div class="form-group"><label>客戶/業主</label><input id="pm-client" type="text"></div><div class="form-group"><label>專案經理</label><input id="pm-pm" type="text"></div></div>
+        <div class="form-row"><div class="form-group"><label>開始日期</label><input id="pm-start" type="date"></div><div class="form-group"><label>預計完工日</label><input id="pm-end" type="date"></div></div>
+        <div class="form-row single"><div class="form-group"><label>整體狀態</label><select id="pm-status"><option value="active">進行中</option><option value="done">已完成</option><option value="risk">有風險</option><option value="dispute">爭議/暫停</option></select></div></div>
+        <div class="form-row single"><div class="form-group"><label>備註</label><textarea id="pm-note"></textarea></div></div>
+      </div>
+    </div>
+    <div class="tab-pane" id="pm-tab-1">
+      <div class="form-section">
+        <div class="form-section-title">成本科目（代號 / 名稱 / 預算萬 / 實際萬 / 備註）</div>
+        <div class="tbl-edit-row cols-cost head"><div>代號</div><div>科目名稱</div><div>預算(萬)</div><div>實際(萬)</div><div>備註</div><div></div></div>
+        <div id="cost-edit-rows"></div>
+        <button class="btn-add-row" onclick="addCostRow()">＋ 新增科目</button>
+      </div>
+    </div>
+    <div class="tab-pane" id="pm-tab-2">
+      <div class="form-section">
+        <div class="form-section-title">里程碑（日期 / 名稱 / 負責人 / 完成% / 狀態）</div>
+        <div class="tbl-edit-row cols-ms head"><div>日期</div><div>里程碑名稱</div><div>負責人</div><div>完成%</div><div>狀態</div><div></div></div>
+        <div id="ms-edit-rows"></div>
+        <button class="btn-add-row" onclick="addMsRow()">＋ 新增里程碑</button>
+      </div>
+    </div>
+    <div class="tab-pane" id="pm-tab-3">
+      <div class="form-section">
+        <div class="form-section-title">WBS 工作包（代碼如 1、1.1、1.1.1 自動建立層級）</div>
+        <div class="tbl-edit-row cols-wbs head"><div>WBS代碼</div><div>工作包名稱</div><div>預算(萬)</div><div>實際(萬)</div><div>負責人</div><div></div></div>
+        <div id="wbs-edit-rows"></div>
+        <button class="btn-add-row" onclick="addWbsRow()">＋ 新增工作包</button>
+      </div>
+    </div>
+    <div class="tab-pane" id="pm-tab-4">
+      <div class="form-section">
+        <div class="form-section-title">合約基本資訊</div>
+        <div class="contract-edit-grid">
+          <div class="form-group"><label>合約編號</label><input id="ct-number" type="text"></div>
+          <div class="form-group"><label>合約金額（萬）</label><input id="ct-value" type="number"></div>
+          <div class="form-group"><label>合約類型</label><select id="ct-type"><option value="固定總價">固定總價 (Lump Sum)</option><option value="實支實付">實支實付 (Cost Plus)</option><option value="單價合約">單價合約 (Unit Price)</option><option value="階段付款">階段付款 (Milestone)</option></select></div>
+          <div class="form-group"><label>簽約日期</label><input id="ct-signed" type="date"></div>
+          <div class="form-group"><label>保固期限</label><input id="ct-warranty" type="text" placeholder="例：1年"></div>
+          <div class="form-group"><label>付款條件</label><input id="ct-payment" type="text" placeholder="例：月底次月匯款"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">付款里程碑</div>
+        <div class="tbl-edit-row cols-pay head"><div>預計日期</div><div>付款說明</div><div>金額(萬)</div><div>已收(萬)</div><div>狀態</div><div></div></div>
+        <div id="pay-edit-rows"></div>
+        <button class="btn-add-row" onclick="addPayRow()">＋ 新增付款項</button>
+      </div>
+    </div>
+    <div class="edit-modal-footer"><button class="btn-cancel" onclick="closePmModal()">取消</button><button class="btn-save" style="background:var(--blue)" onclick="savePmProject()">儲存專案</button></div>
+  </div>
+</div>
+
+<script>
+/* ════ DEFAULT BSC DATA ════ */
+const DEFAULT_BSC={layers:[
+  {id:'layer-0',desc:'👁️ <strong>對象：董事會 / 總經理</strong> ── 問的是「公司現在安全嗎？」',chain:[{cls:'cn-learning',label:'學習成長'},{arrow:true},{cls:'cn-process',label:'內部流程'},{arrow:true},{cls:'cn-customer',label:'客戶'},{arrow:true},{cls:'cn-finance',label:'財務'}],chainSuffix:'← 你現在看這裡',legend:[{dot:'green',label:'達標'},{dot:'yellow',label:'需關注'},{dot:'red',label:'異常'}],
+  sections:[
+    {id:'s0-f',cls:'dim-finance',icon:'💰',title:'財務',kpis:[
+      {id:'r-rev',name:'營收達成率',meta:'實際vs預算',why:'衡量本月實際營收vs預算目標',display:'97.2%',target:'目標≥95%',targetVal:95,unit:'%',chartType:'line',status:'green',history:[88,91,95,93,97,97.2],owner:'財務長',freq:'月報'},
+      {id:'r-gm',name:'毛利率',meta:'含料工費',why:'扣除直接製造成本後的獲利能力',display:'25.1%',target:'目標≥28%',targetVal:28,unit:'%',chartType:'line',status:'yellow',history:[29,28,27,26.5,25.8,25.1],owner:'財務長',freq:'月報'},
+      {id:'r-eb',name:'EBITDA Margin',meta:'核心獲利',why:'息稅折舊攤銷前利潤率',display:'13.8%',target:'目標≥12%',targetVal:12,unit:'%',chartType:'line',status:'green',history:[12.1,13,12.8,13.5,13.2,13.8],owner:'財務長',freq:'月報'}
+    ]},
+    {id:'s0-c',cls:'dim-customer',icon:'🤝',title:'客戶',kpis:[
+      {id:'r-ret',name:'客戶留存率',meta:'活躍客戶',why:'本期繼續下單客戶/上期活躍客戶',display:'93%',target:'目標≥90%',targetVal:90,unit:'%',chartType:'line',status:'green',history:[91,90,92,93,92,93],owner:'業務總監',freq:'季報'},
+      {id:'r-otd',name:'交期達成率 OTD',meta:'準時出貨',why:'準時交貨訂單數/總訂單數',display:'88%',target:'目標≥95%',targetVal:95,unit:'%',chartType:'line',status:'red',history:[96,95,93,91,90,88],owner:'廠長',freq:'月報'},
+      {id:'r-cmp',name:'客訴件數',meta:'正式投訴',why:'本月客戶正式投訴件數',display:'7件',target:'目標≤3件',targetVal:3,unit:'件',chartType:'bar',status:'yellow',history:[2,1,3,4,5,7],owner:'品保主管',freq:'月報'}
+    ]},
+    {id:'s0-p',cls:'dim-process',icon:'⚙️',title:'內部流程',kpis:[
+      {id:'r-oee',name:'設備稼動率 OEE',meta:'整體設備效率',why:'整體設備效率=可用性×效能×良率',display:'72%',target:'目標≥80%',targetVal:80,unit:'%',chartType:'line',status:'yellow',history:[78,80,79,75,73,72],owner:'製造主管',freq:'週報'},
+      {id:'r-yld',name:'良率',meta:'製程良品率',why:'出貨合格品/總產出',display:'97.1%',target:'目標≥96%',targetVal:96,unit:'%',chartType:'line',status:'green',history:[96.5,96.8,97,96.9,97.2,97.1],owner:'品保主管',freq:'日報'},
+      {id:'r-inv',name:'庫存周轉天數',meta:'存貨效率',why:'平均庫存/日銷售成本',display:'38天',target:'目標≤45天',targetVal:45,unit:'天',chartType:'line',status:'green',history:[50,47,44,42,40,38],owner:'供鏈主管',freq:'月報'}
+    ]},
+    {id:'s0-l',cls:'dim-learning',icon:'🧠',title:'學習成長',kpis:[
+      {id:'r-trn',name:'人員流失率',meta:'含臨時工',why:'月離職人數/月平均人數',display:'3.8%',target:'目標≤2%',targetVal:2,unit:'%',chartType:'bar',status:'yellow',history:[1.8,2,2.5,3,3.5,3.8],owner:'人資主管',freq:'月報'},
+      {id:'r-prd',name:'人均產值',meta:'月均',why:'月營收/總員工數',display:'91萬',target:'目標≥85萬',targetVal:85,unit:'萬',chartType:'bar',status:'green',history:[82,84,86,88,90,91],owner:'總經理',freq:'月報'},
+      {id:'r-kzn',name:'改善提案採用率',meta:'Kaizen活躍度',why:'月採用提案/月提交提案',display:'68%',target:'目標≥60%',targetVal:60,unit:'%',chartType:'line',status:'green',history:[58,60,63,65,67,68],owner:'精實辦公室',freq:'月報'}
+    ]}
+  ]},
+  {id:'layer-1',desc:'🔍 <strong>對象：BU主管/廠長</strong> ── 問的是「為什麼財務數字是這樣？」',chain:[{prefix:'你現在看這裡 →'},{cls:'cn-process',label:'內部流程'},{arrow:true},{cls:'cn-customer',label:'客戶'},{arrow:true},{cls:'cn-finance',label:'財務'}],chainSuffix:'← 解釋第一層結果',legend:[{dot:'green',label:'安全'},{dot:'yellow',label:'1個月內需介入'},{dot:'red',label:'立即行動'}],
+  sections:[
+    {id:'s1-f',cls:'dim-finance',icon:'💰',title:'財務（拆解）',kpis:[
+      {id:'d-mat',name:'直接材料成本率',meta:'vs標準成本',why:'直接材料成本/營收',display:'46%',target:'目標≤42%',targetVal:42,unit:'%',chartType:'line',status:'yellow',history:[42,43,43.5,44,45,46],owner:'採購主管',freq:'月報'},
+      {id:'d-dso',name:'應收帳款天數 DSO',meta:'資金效率',why:'平均應收帳款/日均營收',display:'48天',target:'目標≤55天',targetVal:55,unit:'天',chartType:'line',status:'green',history:[60,57,55,52,50,48],owner:'財務主管',freq:'月報'},
+      {id:'d-pl',name:'各產品線毛利',meta:'A/B/C線別',why:'各產品線個別毛利率',display:'A線18%',target:'目標≥25%',targetVal:25,unit:'%',chartType:'bar',status:'red',history:[27,26,24,22,20,18],owner:'產品經理',freq:'月報'}
+    ]},
+    {id:'s1-c',cls:'dim-customer',icon:'🤝',title:'客戶（拆解）',kpis:[
+      {id:'d-nc',name:'新客戶開發數',meta:'每月新增',why:'本月新簽訂合作意向的客戶數量',display:'3家',target:'目標≥5家',targetVal:5,unit:'家',chartType:'bar',status:'yellow',history:[6,7,5,4,3,3],owner:'業務主管',freq:'月報'},
+      {id:'d-cc',name:'客戶集中度',meta:'Top3佔比',why:'前三大客戶營收佔比',display:'44%',target:'目標≤50%',targetVal:50,unit:'%',chartType:'line',status:'green',history:[52,51,49,47,46,44],owner:'業務總監',freq:'季報'},
+      {id:'d-rt',name:'退貨率',meta:'品質反映',why:'退貨金額/出貨金額',display:'1.8%',target:'目標≤0.5%',targetVal:0.5,unit:'%',chartType:'line',status:'red',history:[0.3,0.4,0.6,0.9,1.3,1.8],owner:'品保主管',freq:'月報'}
+    ]},
+    {id:'s1-p',cls:'dim-process',icon:'⚙️',title:'製程（拆解）',kpis:[
+      {id:'d-su',name:'換線時間',meta:'分鐘/次',why:'設備換線平均時間',display:'67分',target:'目標≤50分',targetVal:50,unit:'分',chartType:'bar',status:'yellow',history:[48,50,55,58,62,67],owner:'製造主管',freq:'週報'},
+      {id:'d-dw',name:'計畫外停機時數',meta:'小時/月',why:'非預計停機總時數',display:'8小時',target:'目標≤2小時',targetVal:2,unit:'小時',chartType:'bar',status:'red',history:[1,2,3,4,6,8],owner:'設備工程師',freq:'週報'},
+      {id:'d-lt',name:'生產前置時間',meta:'天/批',why:'訂單投入到完工天數',display:'18天',target:'目標≤20天',targetVal:20,unit:'天',chartType:'line',status:'green',history:[25,24,22,20,19,18],owner:'廠長',freq:'月報'}
+    ]},
+    {id:'s1-l',cls:'dim-learning',icon:'🧠',title:'人才（拆解）',kpis:[
+      {id:'d-ct',name:'技能認證覆蓋率',meta:'關鍵職位',why:'持有必要技能認證的員工比率',display:'62%',target:'目標≥80%',targetVal:80,unit:'%',chartType:'line',status:'yellow',history:[80,78,75,70,65,62],owner:'人資主管',freq:'季報'},
+      {id:'d-th',name:'人均訓練時數',meta:'小時/月',why:'月人均接受訓練時數',display:'5.2時',target:'目標≥4時',targetVal:4,unit:'小時',chartType:'bar',status:'green',history:[3.5,4,4.2,4.8,5,5.2],owner:'人資主管',freq:'月報'},
+      {id:'d-mu',name:'多能工比率',meta:'跨站操作',why:'能操作2站以上員工佔比',display:'28%',target:'目標≥35%',targetVal:35,unit:'%',chartType:'line',status:'yellow',history:[32,31,30,29,29,28],owner:'製造主管',freq:'季報'}
+    ]}
+  ]},
+  {id:'layer-2',desc:'🚨 <strong>對象：廠長/現場主管</strong> ── 問的是「未來1-3個月有什麼風險？」',chain:[{prefix:'你現在看這裡 →'},{cls:'cn-learning',label:'學習成長'},{arrow:true},{cls:'cn-process',label:'內部流程'},{arrow:true},{cls:'cn-customer',label:'客戶'}],chainSuffix:'→ 預測第一層未來',legend:[{dot:'green',label:'安全'},{dot:'yellow',label:'1個月內需介入'},{dot:'red',label:'立即行動'}],
+  sections:[
+    {id:'s2-f',cls:'dim-finance',icon:'💰',title:'財務預警',kpis:[
+      {id:'w-bn',name:'現金消耗速率',meta:'萬/月',why:'每月淨現金流出，預測資金壓力',display:'510萬',target:'目標≤300萬',targetVal:300,unit:'萬',chartType:'line',status:'red',history:[200,220,280,350,420,510],owner:'財務長',freq:'月報'},
+      {id:'w-wr',name:'報價成功率',meta:'訂單轉換',why:'成交訂單/報價次數',display:'29%',target:'目標≥40%',targetVal:40,unit:'%',chartType:'line',status:'yellow',history:[40,38,37,35,33,29],owner:'業務總監',freq:'月報'},
+      {id:'w-pi',name:'訂單能見度',meta:'未來3個月',why:'已確認訂單金額/3個月產能',display:'82%',target:'目標≥70%',targetVal:70,unit:'%',chartType:'line',status:'green',history:[72,75,78,80,81,82],owner:'業務總監',freq:'週報'}
+    ]},
+    {id:'s2-c',cls:'dim-customer',icon:'🤝',title:'客戶預警',kpis:[
+      {id:'w-bc',name:'大客戶下單間隔',meta:'A客戶(週)',why:'主要客戶下單週期，間隔拉長代表流失風險',display:'6週',target:'正常≤2週',targetVal:2,unit:'週',chartType:'bar',status:'red',history:[1,1,2,3,5,6],owner:'業務主管',freq:'週報'},
+      {id:'w-ic',name:'客戶非正式抱怨',meta:'含電話/Line',why:'非正式抱怨件數，早於正式客訴出現',display:'18次',target:'目標≤10次',targetVal:10,unit:'次',chartType:'bar',status:'yellow',history:[8,9,10,12,15,18],owner:'客服主管',freq:'週報'},
+      {id:'w-sp',name:'樣品送審件數',meta:'預測新訂單',why:'新產品樣品送客戶審核數',display:'11件',target:'目標≥8件',targetVal:8,unit:'件',chartType:'bar',status:'green',history:[7,8,9,10,10,11],owner:'RD主管',freq:'月報'}
+    ]},
+    {id:'s2-p',cls:'dim-process',icon:'⚙️',title:'製程預警',kpis:[
+      {id:'w-mt',name:'設備保養逾期率',meta:'預測停機風險',why:'預定保養未執行比率',display:'23%',target:'目標0%',targetVal:0,unit:'%',chartType:'bar',status:'red',history:[0,2,5,10,18,23],owner:'設備工程師',freq:'週報'},
+      {id:'w-rm',name:'關鍵原料庫存天數',meta:'斷料風險預警',why:'主原料剩餘可用天數',display:'9天',target:'目標≥14天',targetVal:14,unit:'天',chartType:'line',status:'yellow',history:[22,20,18,15,12,9],owner:'倉管主管',freq:'日報'},
+      {id:'w-ck',name:'製程能力 Cpk',meta:'飄移預警',why:'製程能力指標趨勢',display:'1.48',target:'目標≥1.33',targetVal:1.33,unit:'',chartType:'line',status:'green',history:[1.42,1.44,1.46,1.47,1.48,1.48],owner:'品保工程師',freq:'日報'}
+    ]},
+    {id:'s2-l',cls:'dim-learning',icon:'🧠',title:'人才預警',kpis:[
+      {id:'w-in',name:'關鍵人員離職意向',meta:'員工調查',why:'員工調查「考慮離職」比率',display:'28%',target:'目標≤10%',targetVal:10,unit:'%',chartType:'bar',status:'red',history:[8,10,14,18,22,28],owner:'人資長',freq:'半年'},
+      {id:'w-rc',name:'招募缺口天數',meta:'職缺填補速度',why:'職缺開放至到職平均天數',display:'52天',target:'目標≤30天',targetVal:30,unit:'天',chartType:'bar',status:'yellow',history:[28,30,35,40,46,52],owner:'人資主管',freq:'月報'},
+      {id:'w-sc',name:'接班人計畫覆蓋率',meta:'關鍵職位',why:'關鍵職位已有接班人培育計畫的比率',display:'85%',target:'目標≥80%',targetVal:80,unit:'%',chartType:'line',status:'green',history:[75,77,79,80,82,85],owner:'HR+總經理',freq:'年報'}
+    ]}
+  ]}
+]};
+
+const DEFAULT_PROJECTS=[
+  {id:'prj-001',name:'廠房擴建 A 棟',code:'PRJ-001',client:'集團總部',pm:'王大明',start:'2025-01-01',end:'2026-06-30',status:'risk',note:'土建進度落後約3週，正在追趕中。',
+    costs:[{code:'C1',name:'土建工程',budget:800,actual:820,note:'追加地基費用'},{code:'C2',name:'機電安裝',budget:300,actual:210,note:''},{code:'C3',name:'設備採購',budget:1200,actual:980,note:''},{code:'C4',name:'專案管理費',budget:150,actual:130,note:''},{code:'C5',name:'預備金',budget:200,actual:85,note:'已動用部分'}],
+    milestones:[{date:'2025-02-28',name:'設計定案',owner:'林建築師',pct:100,status:'done'},{date:'2025-04-30',name:'土建開工',owner:'陳承包商',pct:100,status:'done'},{date:'2025-09-30',name:'結構體完工',owner:'陳承包商',pct:75,status:'active'},{date:'2025-12-31',name:'機電完工',owner:'李電氣',pct:0,status:'pending'},{date:'2026-03-31',name:'設備安裝完成',owner:'王大明',pct:0,status:'pending'},{date:'2026-06-30',name:'試運轉驗收',owner:'王大明',pct:0,status:'pending'}],
+    wbs:[{code:'1',name:'廠房擴建A棟',budget:2650,actual:2225,owner:'王大明',children:[{code:'1.1',name:'土木結構工程',budget:800,actual:820,owner:'陳承包商',children:[{code:'1.1.1',name:'地基開挖',budget:200,actual:230,owner:'陳承包商',children:[]},{code:'1.1.2',name:'鋼筋混凝土',budget:600,actual:590,owner:'陳承包商',children:[]}]},{code:'1.2',name:'機電系統',budget:300,actual:210,owner:'李電氣',children:[{code:'1.2.1',name:'高壓配電',budget:180,actual:130,owner:'李電氣',children:[]},{code:'1.2.2',name:'消防系統',budget:120,actual:80,owner:'張消防',children:[]}]},{code:'1.3',name:'設備採購安裝',budget:1200,actual:980,owner:'採購部',children:[]},{code:'1.4',name:'管理與預備',budget:350,actual:215,owner:'王大明',children:[]}]}],
+    contract:{number:'CT-2025-001',value:3200,type:'固定總價',signed:'2024-12-15',warranty:'2年',payment:'按里程碑付款',payments:[{date:'2025-01-15',desc:'預付款(20%)',amount:640,received:640,status:'done'},{date:'2025-05-31',desc:'結構體完工款(30%)',amount:960,received:960,status:'done'},{date:'2025-12-31',desc:'機電完工款(25%)',amount:800,received:0,status:'pending'},{date:'2026-06-30',desc:'驗收尾款(25%)',amount:800,received:0,status:'pending'}]}
+  },
+  {id:'prj-002',name:'生產線自動化升級',code:'PRJ-002',client:'製造事業部',pm:'張小華',start:'2025-06-01',end:'2025-12-31',status:'active',note:'進度正常，設備已到廠。',
+    costs:[{code:'C1',name:'自動化設備',budget:500,actual:480,note:''},{code:'C2',name:'系統整合',budget:120,actual:60,note:'進行中'},{code:'C3',name:'安裝調試',budget:80,actual:20,note:''},{code:'C4',name:'教育訓練',budget:30,actual:0,note:'尚未開始'}],
+    milestones:[{date:'2025-07-31',name:'設備到廠驗收',owner:'張小華',pct:100,status:'done'},{date:'2025-09-30',name:'系統整合完成',owner:'IT部',pct:50,status:'active'},{date:'2025-11-30',name:'試產調整',owner:'製造主管',pct:0,status:'pending'},{date:'2025-12-31',name:'正式量產',owner:'張小華',pct:0,status:'pending'}],
+    wbs:[{code:'1',name:'生產線自動化',budget:730,actual:560,owner:'張小華',children:[{code:'1.1',name:'硬體設備',budget:580,actual:500,owner:'採購部',children:[{code:'1.1.1',name:'機器手臂',budget:350,actual:340,owner:'採購部',children:[]},{code:'1.1.2',name:'輸送系統',budget:150,actual:160,owner:'採購部',children:[]},{code:'1.1.3',name:'安裝費用',budget:80,actual:0,owner:'廠務',children:[]}]},{code:'1.2',name:'軟體系統',budget:120,actual:60,owner:'IT部',children:[{code:'1.2.1',name:'MES介面',budget:60,actual:40,owner:'IT部',children:[]},{code:'1.2.2',name:'SCADA',budget:60,actual:20,owner:'IT部',children:[]}]},{code:'1.3',name:'教育訓練',budget:30,actual:0,owner:'HR',children:[]}]}],
+    contract:{number:'CT-2025-018',value:750,type:'固定總價',signed:'2025-05-20',warranty:'1年',payment:'驗收後30天',payments:[{date:'2025-06-15',desc:'預付款(40%)',amount:300,received:300,status:'done'},{date:'2025-12-31',desc:'驗收尾款(60%)',amount:450,received:0,status:'pending'}]}
+  }
+];
+
+/* ════ STATE ════ */
+const SK='mfg-bsc-v3',PK='mfg-proj-v3';
+let appData=null,projects=[],currentLayer=0,currentProjId=null,editMode=false,editingKPI=null,editingProjId=null,chartInst=null,selStatus='green';
+const MONTHS=['1月','2月','3月','4月','5月','6月'];
+const COLORS={green:'#2ecc71',yellow:'#f39c12',red:'#e74c3c'};
+
+/* ════ STORAGE ════ */
+function loadData(){
+  try{const r=localStorage.getItem(SK);if(r)appData=JSON.parse(r);else throw 0;}catch(e){appData=JSON.parse(JSON.stringify(DEFAULT_BSC));}
+  try{const r=localStorage.getItem(PK);if(r)projects=JSON.parse(r);else throw 0;}catch(e){projects=JSON.parse(JSON.stringify(DEFAULT_PROJECTS));}
+}
+function saveData(){
+  localStorage.setItem(SK,JSON.stringify(appData));localStorage.setItem(PK,JSON.stringify(projects));
+  const b=document.getElementById('savedBadge');b.classList.add('show');clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove('show'),2000);
+}
+function resetData(){if(!confirm('確定還原所有資料為預設值？'))return;localStorage.removeItem(SK);localStorage.removeItem(PK);appData=JSON.parse(JSON.stringify(DEFAULT_BSC));projects=JSON.parse(JSON.stringify(DEFAULT_PROJECTS));renderLayer(currentLayer);saveData();}
+function exportData(){const b=new Blob([JSON.stringify({bsc:appData,projects},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='dashboard-data.json';a.click();}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(p.bsc)appData=p.bsc;if(p.projects)projects=p.projects;saveData();renderLayer(currentLayer);alert('✓ 匯入成功');}catch(err){alert('匯入失敗：'+err.message);}};r.readAsText(f);e.target.value='';}
+
+/* ════ BSC RENDER ════ */
+function renderLayer(idx){
+  if(idx===3){renderProjectDashboard();return;}
+  const layer=appData.layers[idx],main=document.getElementById('mainContent');
+  let ch='';
+  layer.chain.forEach(c=>{if(c.prefix){ch+=`<span class="chain-label">${c.prefix}</span>`;}else if(c.arrow){ch+=`<span class="chain-arrow">→</span>`;}else{ch+=`<div class="chain-node ${c.cls}">${c.label}</div>`;}});
+  if(layer.chainSuffix)ch+=`<span class="chain-label">${layer.chainSuffix}</span>`;
+  const sH=layer.sections.map((s,si)=>`<div class="dim-section ${s.cls}" id="${s.id}"><div class="dim-header"><span class="dim-icon">${s.icon}</span> ${s.title}</div><div class="kpi-list">${s.kpis.map((k,ki)=>kpiHtml(k,idx,si,ki)).join('')}</div></div>`).join('');
+  const lH=layer.legend.map(l=>`<div class="legend-item"><div class="status-dot dot-${l.dot}"></div> ${l.label}</div>`).join('');
+  main.innerHTML=`<div class="layer-desc"><div>${layer.desc}</div></div><div class="causal-chain">${ch}</div><div class="dim-grid">${sH}</div><div class="legend">${lH}<div style="margin-left:auto;color:var(--text-dim);font-size:11px">點擊任一指標 → 展開6個月趨勢圖</div></div>`;
+  layer.sections.forEach(s=>s.kpis.forEach(k=>{if(k.chartType==='bar')drawSparkBar(k.id,k.history,COLORS[k.status]);else drawSparkline(k.id,k.history,COLORS[k.status]);}));
+}
+function kpiHtml(k,li,si,ki){const cv=k.status==='green'?'var(--green)':k.status==='red'?'var(--red)':'var(--yellow)';return `<div class="kpi-item status-${k.status}" onclick="openChart(${li},${si},${ki})"><div class="kpi-left"><div class="kpi-name">${k.name}</div><div class="kpi-meta">${k.meta}</div></div><div class="kpi-mid"><div class="kpi-value" style="color:${cv}">${k.display}</div><div class="kpi-target">${k.target}</div></div><div class="kpi-right"><div class="status-dot dot-${k.status}"></div><svg class="sparkline" width="36" height="20" id="${k.id}"></svg></div><div class="edit-overlay"><button class="btn-open-edit" onclick="event.stopPropagation();openEditModal(${li},${si},${ki})">✏ 編輯</button></div></div>`;}
+
+/* ════ SPARKLINES ════ */
+function drawSparkline(id,data,color){const s=document.getElementById(id);if(!s)return;const W=36,H=20,pad=2,mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;const pts=data.map((v,i)=>`${pad+(i/(data.length-1))*(W-pad*2)},${H-pad-((v-mn)/rng)*(H-pad*2)}`);s.innerHTML=`<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;}
+function drawSparkBar(id,data,color){const s=document.getElementById(id);if(!s)return;const W=36,H=20,n=data.length,gap=1,bw=(W-gap*(n-1))/n,mx=Math.max(...data)||1;s.innerHTML=data.map((v,i)=>{const bh=Math.max(2,(v/mx)*(H-2)),x=i*(bw+gap),y=H-bh;return`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${color}" rx="1"/>`;}).join('');}
+
+/* ════ BSC CHART ════ */
+function openChart(li,si,ki){if(editMode)return;const k=appData.layers[li].sections[si].kpis[ki];document.getElementById('chartTitle').textContent=k.name;document.getElementById('chartWhy').textContent=k.why;document.getElementById('cmFreq').textContent=k.freq;document.getElementById('cmOwner').textContent=k.owner;document.getElementById('cmCurrent').textContent=k.display;document.getElementById('cmTarget').textContent=k.target;document.getElementById('chartOverlay').classList.add('show');const color=COLORS[k.status],ctx=document.getElementById('chartCanvas').getContext('2d');if(chartInst){chartInst.destroy();chartInst=null;}const ta=Array(6).fill(k.targetVal);chartInst=new Chart(ctx,{type:k.chartType==='bar'?'bar':'line',data:{labels:MONTHS,datasets:k.chartType==='bar'?[{label:k.name,data:k.history,backgroundColor:color+'99',borderColor:color,borderWidth:1,borderRadius:3},{label:'目標',data:ta,type:'line',borderColor:'#ffffff44',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false}]:[{label:k.name,data:k.history,borderColor:color,backgroundColor:color+'22',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:color,borderWidth:2},{label:'目標',data:ta,borderColor:'#ffffff44',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false}]},options:{responsive:true,animation:{duration:300},plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a2332',titleColor:'#e8edf2',bodyColor:'#8a9bb0',callbacks:{label:c=>` ${c.parsed.y}${k.unit}`}}},scales:{x:{ticks:{color:'#8a9bb0',font:{size:11}},grid:{color:'#2e3d5444'}},y:{ticks:{color:'#8a9bb0',font:{size:11},callback:v=>v+k.unit},grid:{color:'#2e3d5444'}}}}});}
+function closeChart(){document.getElementById('chartOverlay').classList.remove('show');if(chartInst){chartInst.destroy();chartInst=null;}}
+
+/* ════ BSC EDIT ════ */
+function openEditModal(li,si,ki){editingKPI={li,si,ki};const k=appData.layers[li].sections[si].kpis[ki];document.getElementById('editModalTitle').textContent='編輯：'+k.name;['name','meta','why','display','target','unit','owner','freq'].forEach(f=>document.getElementById('ef-'+f).value=k[f]);document.getElementById('ef-targetVal').value=k.targetVal;document.getElementById('ef-chartType').value=k.chartType;const c=document.getElementById('historyInputs');c.innerHTML='';k.history.forEach((v,i)=>{const inp=document.createElement('input');inp.type='number';inp.step='any';inp.value=v;inp.style.width='60px';inp.title=['1月','2月','3月','4月','5月','6月(最新)'][i];c.appendChild(inp);});selectStatus(k.status);document.getElementById('editModalOverlay').classList.add('show');}
+function closeEditModal(){document.getElementById('editModalOverlay').classList.remove('show');editingKPI=null;}
+function selectStatus(s){selStatus=s;['green','yellow','red'].forEach(c=>document.getElementById('sp-'+c).classList.toggle('selected',c===s));}
+function saveKPI(){if(!editingKPI)return;const{li,si,ki}=editingKPI,k=appData.layers[li].sections[si].kpis[ki];['name','meta','why','display','target','unit','owner','freq'].forEach(f=>k[f]=document.getElementById('ef-'+f).value);k.targetVal=parseFloat(document.getElementById('ef-targetVal').value)||0;k.chartType=document.getElementById('ef-chartType').value;k.status=selStatus;k.history=Array.from(document.querySelectorAll('#historyInputs input')).map(i=>parseFloat(i.value)||0);saveData();closeEditModal();renderLayer(currentLayer);}
+function toggleEditMode(){editMode=!editMode;document.body.classList.toggle('edit-mode',editMode);const b=document.getElementById('btnEditMode');b.classList.toggle('active',editMode);b.textContent=editMode?'✓ 完成編輯':'✏ 編輯模式';}
+function switchLayer(idx){currentLayer=idx;document.querySelectorAll('.layer-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));if(chartInst){chartInst.destroy();chartInst=null;}document.getElementById('chartOverlay').classList.remove('show');renderLayer(idx);}
+
+/* ════ PROJECT DASHBOARD ════ */
+function renderProjectDashboard(){
+  const main=document.getElementById('mainContent');
+  const total=projects.length,active=projects.filter(p=>p.status==='active').length,risk=projects.filter(p=>p.status==='risk'||p.status==='dispute').length;
+  const totalB=projects.reduce((s,p)=>s+p.costs.reduce((a,c)=>a+c.budget,0),0);
+  const totalA=projects.reduce((s,p)=>s+p.costs.reduce((a,c)=>a+c.actual,0),0);
+  if(!currentProjId&&projects.length)currentProjId=projects[0].id;
+  const proj=projects.find(p=>p.id===currentProjId)||projects[0];
+  const totalPct=totalB?Math.round(totalA/totalB*100):0;
+
+  const sumHtml=`<div class="pm-summary">
+    <div class="pm-card c-blue"><div class="pm-card-label">專案總數</div><div class="pm-card-value" style="color:var(--blue)">${total}</div><div class="pm-card-sub">進行中 ${active} 件</div></div>
+    <div class="pm-card c-red"><div class="pm-card-label">有風險專案</div><div class="pm-card-value" style="color:var(--red)">${risk}</div><div class="pm-card-sub">需立即關注</div></div>
+    <div class="pm-card c-yellow"><div class="pm-card-label">總預算（萬）</div><div class="pm-card-value" style="color:var(--yellow)">${totalB.toLocaleString()}</div><div class="pm-card-sub">跨所有專案</div></div>
+    <div class="pm-card c-green"><div class="pm-card-label">已使用（萬）</div><div class="pm-card-value" style="color:var(--${totalPct>100?'red':totalPct>85?'yellow':'green'})">${totalA.toLocaleString()}</div><div class="pm-card-sub">${totalPct}% 預算執行率</div></div>
+  </div>`;
+
+  const selHtml=`<div class="pm-section">
+    <div class="pm-section-header"><div class="pm-section-title">選擇專案</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${proj?`<button class="btn-sm primary" onclick="openPmModal('${proj.id}')">✏ 編輯此專案</button>`:''}
+        <button class="btn-sm primary" onclick="openPmModal(null)">＋ 新增專案</button>
+        ${proj?`<button class="btn-sm danger" onclick="deletePm('${proj.id}')">✕ 刪除</button>`:''}
+      </div>
+    </div>
+    <div class="project-selector">
+      ${projects.map(p=>`<button class="proj-btn${p.id===currentProjId?' active':''}" onclick="selProj('${p.id}')">${p.name}<span style="opacity:.6;font-size:9px;margin-left:4px">${{active:'●進行',done:'✓完成',risk:'⚠風險',dispute:'✕暫停'}[p.status]||''}</span></button>`).join('')}
+      <button class="btn-add-proj" onclick="openPmModal(null)">＋ 新增</button>
+    </div>
+  </div>`;
+
+  if(!proj){main.innerHTML=sumHtml+selHtml+`<div style="text-align:center;padding:40px;color:var(--text-dim)">尚無專案，請點「新增專案」</div>`;return;}
+
+  main.innerHTML=sumHtml+selHtml+buildCost(proj)+buildMilestone(proj)+buildWBS(proj)+buildContract(proj);
+
+  // WBS toggle
+  document.querySelectorAll('.wbs-row').forEach(row=>row.addEventListener('click',function(){const ch=this.parentElement.querySelector('.wbs-children');if(!ch)return;ch.classList.toggle('open');const t=this.querySelector('.wbs-toggle');if(t)t.classList.toggle('open');}));
+  // Contract expand
+  document.querySelectorAll('.contract-header').forEach(h=>h.addEventListener('click',function(){this.nextElementSibling.classList.toggle('open');}));
+}
+
+function selProj(id){currentProjId=id;renderProjectDashboard();}
+function deletePm(id){if(!confirm('確定刪除此專案？'))return;projects=projects.filter(p=>p.id!==id);if(currentProjId===id)currentProjId=projects.length?projects[0].id:null;saveData();renderProjectDashboard();}
+
+function buildCost(proj){
+  const items=proj.costs||[];
+  const totalB=items.reduce((s,c)=>s+c.budget,0),totalA=items.reduce((s,c)=>s+c.actual,0);
+  const totalPct=totalB?Math.round(totalA/totalB*100):0,totalCls=totalPct>100?'over':totalPct>85?'warn':'ok';
+  const rows=items.map(c=>{const p=c.budget?Math.round(c.actual/c.budget*100):0,cl=p>100?'over':p>85?'warn':'ok';return`<tr><td>${c.code}</td><td>${c.name}</td><td class="num">${c.budget.toLocaleString()}</td><td class="num ${cl}">${c.actual.toLocaleString()}</td><td class="num ${cl}">${p}%<span class="cost-bar-wrap"><span class="cost-bar ${cl}" style="width:${Math.min(p,100)}%"></span></span></td><td style="font-size:10px;color:var(--text-dim)">${c.note||''}</td></tr>`;}).join('');
+  return`<div class="pm-section"><div class="pm-section-header"><div class="pm-section-title">💰 專案成本追蹤</div><div style="font-size:11px;color:var(--text-dim)">預算 <b style="color:var(--text)">${totalB.toLocaleString()}萬</b> ／ 實際 <b style="color:var(--${totalPct>100?'red':totalPct>85?'yellow':'green'})">${totalA.toLocaleString()}萬</b> (${totalPct}%)</div></div>
+  <div style="background:var(--card);border-radius:8px;overflow:auto"><table class="pm-table"><thead><tr><th>代號</th><th>成本科目</th><th style="text-align:right">預算(萬)</th><th style="text-align:right">實際(萬)</th><th style="text-align:right">執行率</th><th>備註</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="tfoot-row"><td colspan="2">合計</td><td class="num">${totalB.toLocaleString()}</td><td class="num ${totalCls}">${totalA.toLocaleString()}</td><td class="num ${totalCls}">${totalPct}%</td><td></td></tr></tfoot></table></div></div>`;
+}
+
+function buildMilestone(proj){
+  const ms=proj.milestones||[],ps=new Date(proj.start),pe=new Date(proj.end),today=new Date();
+  const span=pe-ps||1,todayPct=Math.max(0,Math.min(100,((today-ps)/span)*100));
+  const dots=ms.map(m=>{const md=new Date(m.date),x=Math.max(0,Math.min(97,((md-ps)/span)*100));const col=m.status==='done'?'var(--green)':m.status==='active'?'var(--blue)':m.status==='late'?'var(--red)':'var(--steel-light)';return`<div title="${m.name}: ${m.date}" style="position:absolute;left:${x}%;top:8px;width:12px;height:12px;border-radius:50%;background:${col};border:2px solid var(--steel-mid);transform:translateX(-50%)"></div>`;}).join('');
+  const mLabels=[];const cur=new Date(ps);cur.setDate(1);while(cur<=pe){const p=((cur-ps)/span)*100;if(p>=0&&p<=100)mLabels.push(`<div style="position:absolute;left:${p}%;font-size:9px;color:var(--text-dim);transform:translateX(-50%)">${cur.getMonth()+1}月</div>`);cur.setMonth(cur.getMonth()+1);}
+  const rows=ms.map(m=>{const bl={done:'已完成',active:'進行中',late:'延遲',pending:'待執行'}[m.status]||'待執行';return`<div class="milestone-row ms-${m.status}"><div class="ms-date">${m.date}</div><div class="ms-name">${m.name}</div><div class="ms-owner">${m.owner}</div><div class="ms-status"><span class="ms-badge ${m.status}">${bl}</span></div><div><div class="ms-progress-wrap"><div class="ms-progress" style="width:${m.pct}%;background:${m.status==='done'?'var(--green)':m.status==='active'?'var(--blue)':m.status==='late'?'var(--red)':'var(--steel-light)'}"></div></div><div style="font-size:9px;color:var(--text-dim);text-align:right;margin-top:2px">${m.pct}%</div></div></div>`;}).join('');
+  return`<div class="pm-section"><div class="pm-section-header"><div class="pm-section-title">📅 專案時程 Milestone</div><div style="font-size:11px;color:var(--text-dim)">${proj.start} → ${proj.end}</div></div>
+  <div style="background:var(--card);border-radius:8px;padding:14px 16px">
+    <div style="position:relative;height:40px;margin-bottom:14px">
+      <div style="position:absolute;top:20px;left:0;right:0;height:2px;background:var(--border);border-radius:1px"></div>
+      ${dots}<div style="position:absolute;left:${todayPct}%;top:4px;width:2px;height:32px;background:var(--accent);border-radius:1px" title="今日"></div>
+      <div style="position:absolute;top:-2px;left:0;right:0;height:18px">${mLabels.join('')}</div>
+    </div>
+    <div class="milestone-list">
+      <div style="display:grid;grid-template-columns:110px 1fr 80px 90px 90px;gap:10px;padding:4px 12px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em"><div>日期</div><div>里程碑</div><div>負責人</div><div>狀態</div><div>完成度</div></div>
+      ${rows}
+    </div>
+  </div></div>`;
+}
+
+function buildWBS(proj){
+  function node(n,lv){
+    const pct=n.budget?Math.round(n.actual/n.budget*100):0,cl=pct>100?'red':pct>85?'yellow':'green',hc=n.children&&n.children.length>0;
+    return`<div class="wbs-item wbs-l${Math.min(lv,2)}">
+      <div class="wbs-row" style="grid-template-columns:16px 65px 1fr 75px 75px 80px 40px 80px">
+        <span class="wbs-toggle${hc?' has-children':''}">▶</span>
+        <span class="wbs-code">${n.code}</span><span class="wbs-name">${n.name}</span>
+        <span class="wbs-pct" style="text-align:right">${n.budget.toLocaleString()}</span>
+        <span class="wbs-pct" style="color:var(--${cl});text-align:right">${n.actual.toLocaleString()}</span>
+        <div><div class="wbs-progress-wrap"><div class="wbs-progress" style="width:${Math.min(pct,100)}%;background:var(--${cl})"></div></div></div>
+        <span class="wbs-pct" style="color:var(--${cl})">${pct}%</span>
+        <span class="wbs-owner">${n.owner}</span>
+      </div>
+      ${hc?`<div class="wbs-children">${n.children.map(c=>node(c,lv+1)).join('')}</div>`:''}
+    </div>`;}
+  return`<div class="pm-section"><div class="pm-section-header"><div class="pm-section-title">📊 WBS 工作分解結構</div><div style="font-size:10px;color:var(--text-dim)">點擊任一列展開子項目</div></div>
+  <div style="background:var(--card);border-radius:8px;padding:12px 14px">
+    <div style="display:grid;grid-template-columns:16px 65px 1fr 75px 75px 80px 40px 80px;gap:8px;padding:4px 10px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);margin-bottom:6px"><div></div><div>代碼</div><div>工作包</div><div style="text-align:right">預算(萬)</div><div style="text-align:right">實際(萬)</div><div>進度</div><div style="text-align:right">%</div><div>負責人</div></div>
+    <div class="wbs-tree">${(proj.wbs||[]).map(n=>node(n,0)).join('')}</div>
+  </div></div>`;
+}
+
+function buildContract(proj){
+  const ct=proj.contract||{},pays=ct.payments||[];
+  const totalP=pays.reduce((s,p)=>s+p.amount,0),totalR=pays.reduce((s,p)=>s+p.received,0);
+  const payRows=pays.map(p=>{const bl={done:'已收款',pending:'待收款',risk:'有爭議'}[p.status]||'待收款';return`<tr><td>${p.date}</td><td>${p.desc}</td><td class="num">${p.amount.toLocaleString()}</td><td class="num ${p.received>0?'ok':''}">${p.received.toLocaleString()}</td><td><span class="ms-badge ${p.status==='done'?'done':p.status==='risk'?'late':'pending'}">${bl}</span></td></tr>`;}).join('');
+  const stMap={active:'cb-active',done:'cb-done',risk:'cb-risk',dispute:'cb-dispute'};
+  const stLabel={active:'進行中',done:'已完成',risk:'有風險',dispute:'爭議'};
+  return`<div class="pm-section"><div class="pm-section-header"><div class="pm-section-title">📄 合約資訊</div><div style="font-size:11px;color:var(--text-dim)">已收 <b style="color:var(--green)">${totalR.toLocaleString()}萬</b> / 合約總額 <b style="color:var(--text)">${(ct.value||0).toLocaleString()}萬</b></div></div>
+  <div class="contract-card">
+    <div class="contract-header">
+      <div><div class="contract-name">${proj.name}</div><div class="contract-client">${proj.client} ・ ${ct.number||'未設定'}</div></div>
+      <div class="contract-num" style="color:var(--blue)">${(ct.value||0).toLocaleString()} 萬</div>
+      <div class="contract-num" style="color:var(--text-dim)">${ct.type||''}</div>
+      <div class="contract-num" style="color:var(--text-dim);font-size:10px">${ct.signed||''}</div>
+      <div class="contract-num" style="color:var(--text-dim);font-size:10px">保固 ${ct.warranty||'—'}</div>
+      <span class="contract-badge ${stMap[proj.status]||'cb-active'}">${stLabel[proj.status]||proj.status}</span>
+    </div>
+    <div class="contract-body open">
+      <div class="contract-detail-group">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">合約條件</div>
+        ${[['合約編號',ct.number||'—'],['合約金額',(ct.value||0).toLocaleString()+' 萬'],['合約類型',ct.type||'—'],['簽約日期',ct.signed||'—'],['保固期限',ct.warranty||'—'],['付款條件',ct.payment||'—']].map(([l,v])=>`<div class="contract-detail-row"><span class="contract-detail-label">${l}</span><span class="contract-detail-val">${v}</span></div>`).join('')}
+      </div>
+      <div class="contract-detail-group">
+        <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">付款進度 (${totalR.toLocaleString()} / ${totalP.toLocaleString()} 萬)</div>
+        <table class="pm-table"><thead><tr><th>日期</th><th>付款項目</th><th style="text-align:right">金額(萬)</th><th style="text-align:right">已收(萬)</th><th>狀態</th></tr></thead><tbody>${payRows}</tbody></table>
+      </div>
+    </div>
+  </div>
+  ${proj.note?`<div style="margin-top:10px;padding:10px 14px;background:var(--steel-light);border-radius:6px;font-size:11px;color:var(--text-dim);border-left:3px solid var(--yellow)">📝 ${proj.note}</div>`:''}
+  </div>`;
+}
+
+/* ════ PROJECT EDIT MODAL ════ */
+function openPmModal(id){
+  editingProjId=id;
+  const proj=id?projects.find(p=>p.id===id):null;
+  document.getElementById('pmModalTitle').textContent=proj?`編輯：${proj.name}`:'新增專案';
+  if(proj){
+    ['name','code','client','pm','start','end','note'].forEach(f=>document.getElementById('pm-'+f).value=proj[f]||'');
+    document.getElementById('pm-status').value=proj.status||'active';
+    renderCostRows(proj.costs||[]);renderMsRows(proj.milestones||[]);renderWbsRows(flatWbs(proj.wbs||[]));
+    const ct=proj.contract||{};
+    ['number','warranty','payment'].forEach(f=>document.getElementById('ct-'+f).value=ct[f]||'');
+    document.getElementById('ct-value').value=ct.value||'';document.getElementById('ct-type').value=ct.type||'固定總價';document.getElementById('ct-signed').value=ct.signed||'';
+    renderPayRows(ct.payments||[]);
+  }else{
+    ['pm-name','pm-code','pm-client','pm-pm','pm-note','ct-number','ct-warranty','ct-payment'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('pm-start').value=new Date().toISOString().slice(0,10);
+    document.getElementById('pm-end').value='';document.getElementById('pm-status').value='active';document.getElementById('ct-type').value='固定總價';document.getElementById('ct-value').value='';document.getElementById('ct-signed').value='';
+    renderCostRows([]);renderMsRows([]);renderWbsRows([]);renderPayRows([]);
+  }
+  switchPmTab(0);
+  document.getElementById('pmEditOverlay').classList.add('show');
+}
+function closePmModal(){document.getElementById('pmEditOverlay').classList.remove('show');editingProjId=null;}
+function switchPmTab(idx){document.querySelectorAll('.tab-pane').forEach((p,i)=>p.classList.toggle('active',i===idx));document.querySelectorAll('.tab-pill').forEach((p,i)=>p.classList.toggle('active',i===idx));}
+function flatWbs(nodes){const r=[];nodes.forEach(n=>{r.push({code:n.code,name:n.name,budget:n.budget,actual:n.actual,owner:n.owner});if(n.children&&n.children.length)r.push(...flatWbs(n.children));});return r;}
+
+function makeRow(cls,cols,inputs,onDel){const row=document.createElement('div');row.className='tbl-edit-row '+cls;row.innerHTML=inputs+'<button class="btn-del-row" onclick="this.parentElement.remove()">×</button>';return row;}
+function renderCostRows(items){const c=document.getElementById('cost-edit-rows');c.innerHTML='';items.forEach(it=>{const r=makeRow('cols-cost','',`<input type="text" value="${it.code||''}"><input type="text" value="${it.name||''}"><input type="number" value="${it.budget||0}" min="0"><input type="number" value="${it.actual||0}" min="0"><input type="text" value="${it.note||''}">`);c.appendChild(r);});}
+function addCostRow(){const c=document.getElementById('cost-edit-rows');c.appendChild(makeRow('cols-cost','',`<input type="text" placeholder="C1"><input type="text" placeholder="科目名稱"><input type="number" value="0"><input type="number" value="0"><input type="text" placeholder="備註">`));}
+function renderMsRows(items){const c=document.getElementById('ms-edit-rows');c.innerHTML='';items.forEach(it=>{const r=makeRow('cols-ms','',`<input type="date" value="${it.date||''}"><input type="text" value="${it.name||''}"><input type="text" value="${it.owner||''}"><input type="number" value="${it.pct||0}" min="0" max="100"><select>${['pending','active','done','late'].map(s=>`<option value="${s}"${it.status===s?' selected':''}>${{pending:'待執行',active:'進行中',done:'已完成',late:'延遲'}[s]}</option>`).join('')}</select>`);c.appendChild(r);});}
+function addMsRow(){const c=document.getElementById('ms-edit-rows');const today=new Date().toISOString().slice(0,10);c.appendChild(makeRow('cols-ms','',`<input type="date" value="${today}"><input type="text" placeholder="里程碑名稱"><input type="text" placeholder="負責人"><input type="number" value="0"><select><option value="pending">待執行</option><option value="active">進行中</option><option value="done">已完成</option><option value="late">延遲</option></select>`));}
+function renderWbsRows(items){const c=document.getElementById('wbs-edit-rows');c.innerHTML='';items.forEach(it=>{const r=makeRow('cols-wbs','',`<input type="text" value="${it.code||''}"><input type="text" value="${it.name||''}"><input type="number" value="${it.budget||0}"><input type="number" value="${it.actual||0}"><input type="text" value="${it.owner||''}">`);c.appendChild(r);});}
+function addWbsRow(){const c=document.getElementById('wbs-edit-rows');c.appendChild(makeRow('cols-wbs','',`<input type="text" placeholder="1.1"><input type="text" placeholder="工作包名稱"><input type="number" value="0"><input type="number" value="0"><input type="text" placeholder="負責人">`));}
+function renderPayRows(items){const c=document.getElementById('pay-edit-rows');c.innerHTML='';items.forEach(it=>{const r=makeRow('cols-pay','',`<input type="date" value="${it.date||''}"><input type="text" value="${it.desc||''}"><input type="number" value="${it.amount||0}"><input type="number" value="${it.received||0}"><select>${['pending','done','risk'].map(s=>`<option value="${s}"${it.status===s?' selected':''}>${{pending:'待收款',done:'已收款',risk:'有爭議'}[s]}</option>`).join('')}</select>`);c.appendChild(r);});}
+function addPayRow(){const c=document.getElementById('pay-edit-rows');const today=new Date().toISOString().slice(0,10);c.appendChild(makeRow('cols-pay','',`<input type="date" value="${today}"><input type="text" placeholder="付款說明"><input type="number" value="0"><input type="number" value="0"><select><option value="pending">待收款</option><option value="done">已收款</option><option value="risk">有爭議</option></select>`));}
+
+function collectRows(cid,fields){return Array.from(document.querySelectorAll('#'+cid+'>div.tbl-edit-row:not(.head)')).map(row=>{const ins=row.querySelectorAll('input,select');const o={};fields.forEach((f,i)=>{const inp=ins[i];if(!inp)return;o[f]=inp.type==='number'?parseFloat(inp.value)||0:inp.value;});return o;});}
+function buildWbsTree(flat){const roots=[],map={};flat.forEach(it=>{map[it.code]={...it,children:[]};});flat.forEach(it=>{const parts=it.code.split('.');if(parts.length===1){roots.push(map[it.code]);return;}const pc=parts.slice(0,-1).join('.');if(map[pc])map[pc].children.push(map[it.code]);else roots.push(map[it.code]);});return roots;}
+
+function savePmProject(){
+  const name=document.getElementById('pm-name').value.trim();if(!name){alert('請填寫專案名稱');return;}
+  const costs=collectRows('cost-edit-rows',['code','name','budget','actual','note']);
+  const milestones=collectRows('ms-edit-rows',['date','name','owner','pct','status']);
+  const wbsFlat=collectRows('wbs-edit-rows',['code','name','budget','actual','owner']);
+  const payments=collectRows('pay-edit-rows',['date','desc','amount','received','status']);
+  const contract={number:document.getElementById('ct-number').value,value:parseFloat(document.getElementById('ct-value').value)||0,type:document.getElementById('ct-type').value,signed:document.getElementById('ct-signed').value,warranty:document.getElementById('ct-warranty').value,payment:document.getElementById('ct-payment').value,payments};
+  const pd={id:editingProjId||('prj-'+Date.now()),name,code:document.getElementById('pm-code').value,client:document.getElementById('pm-client').value,pm:document.getElementById('pm-pm').value,start:document.getElementById('pm-start').value,end:document.getElementById('pm-end').value,status:document.getElementById('pm-status').value,note:document.getElementById('pm-note').value,costs,milestones,wbs:buildWbsTree(wbsFlat),contract};
+  if(editingProjId){const idx=projects.findIndex(p=>p.id===editingProjId);if(idx>=0)projects[idx]=pd;}else projects.push(pd);
+  currentProjId=pd.id;saveData();closePmModal();renderProjectDashboard();
+}
+
+/* ════ INIT ════ */
+function init(){const now=new Date();document.getElementById('currentMonth').textContent=`${now.getFullYear()} / ${String(now.getMonth()+1).padStart(2,'0')}`;loadData();renderLayer(0);}
+const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';s.onload=init;document.head.appendChild(s);
+</script>
+</body>
+</html>
